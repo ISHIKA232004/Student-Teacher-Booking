@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Student-Teacher Booking</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Navigation -->
+        <nav class="navbar">
+            <div class="logo">📚 EduBook</div>
+            <div class="nav-links">
+                <a href="../index.html">Home</a>
+                <a href="login.html" class="active">Login</a>
+                <a href="register.html">Register</a>
+            </div>
+        </nav>
+
+        <!-- Login Form -->
+        <div class="form-container">
+            <h2 style="text-align: center;">Login to Your Account</h2>
+            <p style="text-align: center; color: #7f8c8d; margin-bottom: 30px;">
+                Enter your credentials to access the booking system
+            </p>
+            
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" placeholder="Enter your email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" placeholder="Enter your password" required>
+                </div>
+                
+                <div class="form-group" style="text-align: center;">
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">
+                        Login
+                    </button>
+                </div>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <p>Don't have an account? <a href="register.html">Register here</a></p>
+                </div>
+            </form>
+            
+        </div>
+
+        <!-- Footer -->
+        <footer>
+            <p>Student-Teacher Booking System &copy; 2024</p>
+        </footer>
+    </div>
+
+    <!-- JavaScript Files -->
+    <script src="../js/firebase-config.js"></script>
+    <script src="../js/auth.js"></script>
+    
+    <script>
+        // Handle form submission
+        document.getElementById("loginForm").addEventListener("submit", async function(e) {
+            e.preventDefault(); // Prevent page reload
+            
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+            
+            // Show loading state
+            const submitBtn = this.querySelector("button");
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = "Logging in...";
+            submitBtn.disabled = true;
+            
+            // Call login function
+            const result = await loginUser(email, password);
+            
+            if (result.success) {
+                // Show success message
+                alert("✅ Login successful! Redirecting to dashboard...");
+
+                setTimeout(() => {
+                const storedUser = JSON.parse(localStorage.getItem("user"));
+
+                if (!storedUser) {
+                    alert("User data not ready. Try again.");
+                    return;
+                }
+
+                if (storedUser.type === "admin") {
+                    window.location.href = "admin.html";
+                } else if (storedUser.type === "teacher") {
+                    window.location.href = "teacher.html";
+                } else {
+                    window.location.href = "dashboard.html";
+                }
+            }, 1000);
+                
+            } else {
+                // Show error message
+                alert("❌ " + result.message);
+                
+                // Reset button
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            }
+        });
+        
+
+    </script>
+</body>
+</html>

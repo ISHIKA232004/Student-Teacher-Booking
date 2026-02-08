@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - Student-Teacher Booking</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Navigation -->
+        <nav class="navbar">
+            <div class="logo">📚 EduBook</div>
+            <div class="nav-links">
+                <a href="../index.html">Home</a>
+                <a href="login.html">Login</a>
+                <a href="register.html" class="active">Register</a>
+            </div>
+        </nav>
+
+        <!-- Registration Form -->
+        <div class="form-container">
+            <h2 style="text-align: center;">Create Your Account</h2>
+            <p style="text-align: center; color: #7f8c8d; margin-bottom: 30px;">
+                Choose your role and fill in the details
+            </p>
+            
+            <form id="registerForm">
+                <div class="form-group">
+                    <label for="fullName">Full Name</label>
+                    <input type="text" id="fullName" placeholder="Enter your full name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" placeholder="Enter your email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" placeholder="At least 6 characters" required minlength="6">
+                </div>
+                
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm Password</label>
+                    <input type="password" id="confirmPassword" placeholder="Re-enter your password" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="userType">I am a:</label>
+                    <select id="userType" required>
+                        <option value="">Select your role</option>
+                        <option value="student">Student</option>
+                        <option value="teacher">Teacher</option>
+                    </select>
+                </div>
+                
+                <!-- Additional fields for teacher -->
+                <div id="teacherFields" style="display: none;">
+                    <div class="form-group">
+                        <label for="department">Department</label>
+                        <input type="text" id="department" placeholder="e.g., Computer Science">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="subject">Subject</label>
+                        <input type="text" id="subject" placeholder="e.g., Mathematics">
+                    </div>
+                </div>
+                
+                <div class="form-group" style="text-align: center;">
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">
+                        Create Account
+                    </button>
+                </div>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <p>Already have an account? <a href="login.html">Login here</a></p>
+                </div>
+            </form>
+        </div>
+
+        <!-- Footer -->
+        <footer>
+            <p>Student-Teacher Booking System &copy; 2024</p>
+        </footer>
+    </div>
+
+    <!-- JavaScript Files -->
+    <script src="../js/firebase-config.js"></script>
+    <script src="../js/auth.js"></script>
+    
+    <script>
+        // Show/hide teacher fields based on selection
+        document.getElementById("userType").addEventListener("change", function() {
+            const teacherFields = document.getElementById("teacherFields");
+            if (this.value === "teacher") {
+                teacherFields.style.display = "block";
+            } else {
+                teacherFields.style.display = "none";
+            }
+        });
+        
+        // Handle form submission
+        document.getElementById("registerForm").addEventListener("submit", async function(e) {
+            e.preventDefault(); // Prevent page reload
+            
+            // Get form values
+            const fullName = document.getElementById("fullName").value;
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+            const confirmPassword = document.getElementById("confirmPassword").value;
+            const userType = document.getElementById("userType").value;
+            
+            // Validation
+            if (password !== confirmPassword) {
+                alert("❌ Passwords do not match!");
+                return;
+            }
+            
+            if (password.length < 6) {
+                alert("❌ Password must be at least 6 characters!");
+                return;
+            }
+            
+            if (!userType) {
+                alert("❌ Please select your role!");
+                return;
+            }
+            
+            // Prepare user data
+            const userData = {
+                name: fullName,
+                type: userType
+            };
+            
+            // Add additional data for teachers
+            if (userType === "teacher") {
+                userData.department = document.getElementById("department").value;
+                userData.subject = document.getElementById("subject").value;
+            }
+            
+            // Show loading state
+            const submitBtn = this.querySelector("button");
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = "Creating Account...";
+            submitBtn.disabled = true;
+            
+            // Call registration function
+            const result = await registerUser(email, password, userData);
+            
+            if (result.success) {
+                alert("✅ " + result.message + " Redirecting to login...");
+                
+                // Redirect to login page after 2 seconds
+                setTimeout(() => {
+                    window.location.href = "login.html";
+                }, 2000);
+                
+            } else {
+                alert("❌ " + result.message);
+                
+                // Reset button
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            }
+        });
+        
+    </script>
+</body>
+</html>

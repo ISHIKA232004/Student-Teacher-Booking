@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Navigation -->
+        <nav class="navbar">
+            <div class="logo">📚 Student Dashboard</div>
+            <div class="nav-links">
+                <span id="userWelcome" style="color: white; margin-right: 20px;"></span>
+                <a href="#" onclick="logoutUser()">Logout</a>
+            </div>
+        </nav>
+
+        <!-- Dashboard Content -->
+        <div class="dashboard">
+            <!-- User Info -->
+            <div class="user-info">
+                <h2>Welcome, <span id="userName"></span>!</h2>
+                <p>Student ID: <span id="userId"></span></p>
+                <p>Email: <span id="userEmail"></span></p>
+            </div>
+
+            <!-- Tabs -->
+            <div class="tabs" style="margin-bottom: 30px; display: flex; gap: 10px;">
+                <button class="btn btn-primary" onclick="showTab('bookAppointment')">Book Appointment</button>
+                <button class="btn btn-secondary" onclick="showTab('myAppointments')">My Appointments</button>
+                <button class="btn btn-secondary" onclick="showTab('findTeachers')">Find Teachers</button>
+            </div>
+
+            <!-- Tab 1: Book Appointment -->
+            <div id="bookAppointment" class="tab-content">
+                <h3>Book New Appointment</h3>
+                
+                <div class="form-container" style="max-width: 100%;">
+                    <div class="form-group">
+                        <label for="teacherSelect">Select Teacher:</label>
+                        <select id="teacherSelect" class="form-control">
+                            <option value="">Loading teachers...</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="appointmentDate">Date:</label>
+                        <input type="date" id="appointmentDate" class="form-control">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="appointmentTime">Time:</label>
+                        <input type="time" id="appointmentTime" class="form-control">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="purpose">Purpose of Meeting:</label>
+                        <textarea id="purpose" class="form-control" rows="3" 
+                                  placeholder="Briefly describe what you want to discuss"></textarea>
+                    </div>
+                    
+                    <button class="btn btn-success" onclick="bookNewAppointment()">
+                        Book Appointment
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab 2: My Appointments -->
+            <div id="myAppointments" class="tab-content" style="display: none;">
+                <h3>My Appointments</h3>
+                
+                <div class="table-container">
+                    <table id="appointmentsTable">
+                        <thead>
+                            <tr>
+                                <th>Teacher</th>
+                                <th>Date</th>
+                                <th>Time</th>
+                                <th>Purpose</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="appointmentsBody">
+                            <!-- Appointments will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab 3: Find Teachers -->
+            <div id="findTeachers" class="tab-content" style="display: none;">
+                <h3>Available Teachers</h3>
+                
+                <div class="features" id="teachersList">
+                    <!-- Teachers will be loaded here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer>
+            <p>Student Dashboard &copy; 2024</p>
+        </footer>
+    </div>
+
+    <!-- JavaScript Files -->
+    <script src="../js/firebase-config.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/appointments.js"></script>
+    
+    <script>
+        // Check authentication on page load
+        document.addEventListener("DOMContentLoaded", function() {
+            checkAuth();
+            loadUserInfo();
+            loadTeachersForDropdown();
+            loadMyAppointments();
+            showTab('bookAppointment');
+        });
+        
+        // Check if user is logged in
+        function checkAuth() {
+            const user = JSON.parse(localStorage.getItem("user"));
+            if (!user) {
+                alert("Please login first!");
+                window.location.href = "login.html";
+                return false;
+            }
+            
+            if (user.type !== "student") {
+                alert("This page is for students only!");
+                window.location.href = user.type + ".html";
+                return false;
+            }
+            
+            return true;
+        }
+        
+        // Load user information
+        function loadUserInfo() {
+            const user = JSON.parse(localStorage.getItem("user"));
+            if (user) {
+                document.getElementById("userWelcome").textContent = "Hello, " + user.name;
+                document.getElementById("userName").textContent = user.name;
+                document.getElementById("userEmail").textContent = user.email;
+                document.getElementById("userId").textContent = user.uid.substring(0, 8) + "...";
+            }
+        }
+        
+        // Tab switching
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.style.display = 'none';
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName).style.display = 'block';
+            
+            // Update button styles
+            document.querySelectorAll('.tabs button').forEach(btn => {
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-secondary');
+            });
+            
+            // Set active button
+            event.target.classList.remove('btn-secondary');
+            event.target.classList.add('btn-primary');
+        }
+        
+        // Load teachers for dropdown
+        async function loadTeachersForDropdown() {
+            const result = await getAllTeachers();
+            
+            if (result.success) {
+                const select = document.getElementById("teacherSelect");
+                select.innerHTML = '<option value="">Select a teacher</option>';
+                
+                result.teachers.forEach(teacher => {
+                    const option = document.createElement("option");
+                    option.value = teacher.id;
+                    option.textContent = `${teacher.name} - ${teacher.subject || "Teacher"}`;
+                    select.appendChild(option);
+                });
+            }
+        }
+        
+        // Book new appointment
+        async function bookNewAppointment() {
+            const teacherId = document.getElementById("teacherSelect").value;
+            const date = document.getElementById("appointmentDate").value;
+            const time = document.getElementById("appointmentTime").value;
+            const purpose = document.getElementById("purpose").value;
+            
+            if (!teacherId || !date || !time || !purpose) {
+                alert("Please fill all fields!");
+                return;
+            }
+            
+            const appointmentData = {
+                date: date,
+                time: time,
+                purpose: purpose
+            };
+            
+            const result = await bookAppointment(teacherId, appointmentData);
+            
+            if (result.success) {
+                alert("✅ " + result.message);
+                // Clear form
+                document.getElementById("appointmentDate").value = "";
+                document.getElementById("appointmentTime").value = "";
+                document.getElementById("purpose").value = "";
+                // Refresh appointments list
+                loadMyAppointments();
+            } else {
+                alert("❌ " + result.message);
+            }
+        }
+        
+        // Load my appointments
+        async function loadMyAppointments() {
+            const result = await getMyAppointments();
+            
+            if (result.success) {
+                const tbody = document.getElementById("appointmentsBody");
+                tbody.innerHTML = "";
+                
+                if (result.appointments.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 40px;">
+                                No appointments found. Book your first appointment!
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+                
+                // For now, we'll just show basic info
+                // Later you can add more details and actions
+                result.appointments.forEach(appointment => {
+                    const row = tbody.insertRow();
+                    row.innerHTML = `
+                        <td>Teacher ID: ${appointment.teacherId.substring(0, 8)}...</td>
+                        <td>${appointment.date}</td>
+                        <td>${appointment.time}</td>
+                        <td>${appointment.purpose.substring(0, 50)}...</td>
+                        <td>
+                            <span class="status-badge ${appointment.status}">
+                                ${appointment.status.toUpperCase()}
+                            </span>
+                        </td>
+                        <td>
+                            <button class="btn btn-primary btn-sm" onclick="viewAppointment('${appointment.id}')">
+                                View
+                            </button>
+                        </td>
+                    `;
+                });
+            }
+        }
+        
+        // View appointment details
+        function viewAppointment(appointmentId) {
+            alert("Viewing appointment: " + appointmentId);
+            // You can implement detailed view in a modal or new page
+        }
+    </script>
+    
+    <style>
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .status-badge.pending {
+            background: #f39c12;
+            color: white;
+        }
+        
+        .status-badge.approved {
+            background: #27ae60;
+            color: white;
+        }
+        
+        .status-badge.cancelled {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .status-badge.completed {
+            background: #3498db;
+            color: white;
+        }
+        
+        .btn-sm {
+            padding: 5px 15px;
+            font-size: 14px;
+        }
+    </style>
+</body>
+</html>
